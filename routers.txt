@@ -1,0 +1,19 @@
+GET ^/student/?$
+GET ^/teacher/?$
+
+GET ^/student/\d+/?$
+GET ^/teacher/\d+/?$
+
+POST ^/student/?$
+POST ^/teacher/?$
+
+PATCH ^/student/\d+/?$
+PATCH ^/teacher/\d+/?$
+
+PUT ^/student/\d+/?$
+PUT ^/teacher/\d+/?$
+
+OPTIONS ^/student/?$
+OPTIONS ^/student/\d+/?$
+OPTIONS ^/teacher/?$
+OPTIONS ^/teacher/\d+/?$

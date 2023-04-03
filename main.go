@@ -7,13 +7,10 @@ import (
 	"os"
 )
 
+// define CLI arguments
 var bindHost = flag.String("bind", "0.0.0.0", "Binding address(only ipv4)")
 var port = flag.String("port", "8080", "Listening port")
 var logLevel = flag.String("loglevel", "Info", "Debug/Info/Error")
-
-func welcomeMessage() {
-	logrus.Info("Listening on " + *bindHost + ":" + *port)
-}
 
 func setLogConfig() {
 	customFormatter := new(logrus.TextFormatter)
@@ -21,15 +18,16 @@ func setLogConfig() {
 	logrus.SetFormatter(customFormatter)
 	customFormatter.FullTimestamp = true
 
+	targetLoglevel := logrus.InfoLevel
 	if *logLevel == "Debug" {
-		logrus.SetLevel(logrus.DebugLevel)
+		targetLoglevel = logrus.DebugLevel
 	} else if *logLevel == "Info" {
-		logrus.SetLevel(logrus.InfoLevel)
+		targetLoglevel = logrus.InfoLevel
 	} else if *logLevel == "Error" {
-		logrus.SetLevel(logrus.ErrorLevel)
-	} else { // default
-		logrus.SetLevel(logrus.InfoLevel)
+		targetLoglevel = logrus.ErrorLevel
 	}
+	logrus.SetLevel(targetLoglevel)
+	logrus.Debug("Set loglevel ", targetLoglevel)
 }
 
 func main() {
@@ -37,37 +35,43 @@ func main() {
 	var listener net.Listener
 	var err error
 
+	COUNTER := 0
+
 	setLogConfig()
+	routers := readRouters()
 
 	listener, err = net.Listen("tcp", *bindHost+":"+*port)
-	if err != nil { // 拦截监听异常情况
-		logrus.Errorln("Error listening:", err)
+	if err != nil { // listen bindHost:port error
+		logrus.Error("Error listening:", err)
 		os.Exit(1)
 	}
-	defer listener.Close() //向 defer 关键字传入的函数会在函数返回之前运行
-	welcomeMessage()
+	defer listener.Close()
+
+	logrus.Info("Listening on " + *bindHost + ":" + *port)
 
 	for {
-		conn, err := listener.Accept() // 阻塞，开始等待连接
+		conn, err := listener.Accept() // waiting for connection
 
-		// 连接异常处理
+		// 监听步骤出现异常
 		if err != nil {
 			logrus.Errorln("Error accepting: ", err)
 			os.Exit(1)
 		}
 
 		// 输出内容，以表示接到了来自remoteAddr->localAddr的连接
-		logrus.Info("connection: ", conn.RemoteAddr(), " -> ", conn.LocalAddr())
+		COUNTER++
+		logrus.Info("connection ", COUNTER, ": ", conn.RemoteAddr(), " -> ", conn.LocalAddr())
 
 		// 将连接转交给handle函数
-		go handleRequest(conn)
+		go handleRequest(conn, routers)
 	}
 }
-func handleRequest(conn net.Conn) {
+
+func handleRequest(conn net.Conn, routers string) {
 	defer conn.Close()
 
-	analyzeHttpMessage(conn)
+	success, statusCode := analyzeHttpMessage(conn, routers)
 
-	responseMessage := buildResponse()
+	responseMessage := buildResponse(success, statusCode)
 	conn.Write([]byte(responseMessage))
 }
